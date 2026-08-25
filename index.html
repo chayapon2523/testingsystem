@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบแบบทดสอบรายวิชา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#16233F;
+    --navy-2:#22345C;
+    --navy-soft:#3A4C78;
+    --gold:#B8933F;
+    --gold-soft:#E4D3A3;
+    --paper:#FAF6EC;
+    --paper-line:#E4DCC8;
+    --card:#FFFFFF;
+    --ink:#232733;
+    --muted:#6B7280;
+    --correct:#2E7D53;
+    --correct-bg:#E8F4EC;
+    --wrong:#B3432B;
+    --wrong-bg:#FBEAE4;
+    --shadow: 0 10px 30px -12px rgba(22,35,63,0.25);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #EFE7D2 0%, var(--paper) 55%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Sarabun',sans-serif;
+    min-height:100vh;
+    padding:32px 16px 80px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+  .eyebrow{
+    font-family:'Kanit',sans-serif;
+    font-size:12.5px;
+    letter-spacing:.14em;
+    color:var(--gold);
+    font-weight:600;
+    text-transform:uppercase;
+    text-align:center;
+    margin-bottom:6px;
+  }
+  .brandline{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-bottom:28px;
+  }
+  .seal{
+    width:34px;height:34px;border-radius:50%;
+    border:2px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Kanit',sans-serif;font-weight:700;font-size:12px;color:var(--navy);
+    background:radial-gradient(circle at 35% 30%, #fff, var(--gold-soft) 120%);
+    flex-shrink:0;
+  }
+  h1.title{
+    font-family:'Kanit',sans-serif;
+    font-weight:600;
+    text-align:center;
+    font-size:26px;
+    color:var(--navy);
+    margin:0 0 34px;
+    line-height:1.4;
+  }
+
+  .card{
+    background:var(--card);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    border:1px solid var(--paper-line);
+    overflow:hidden;
+  }
+
+  /* ---------- SUBJECT SELECT ---------- */
+  .subject-grid{display:flex; flex-direction:column; gap:14px;}
+  .subject-card{
+    background:var(--card); border:1.5px solid var(--paper-line); border-radius:14px;
+    box-shadow:var(--shadow); padding:22px 22px; cursor:pointer;
+    display:flex; align-items:center; gap:16px;
+    transition:border-color .15s, transform .1s;
+  }
+  .subject-card:hover{border-color:var(--navy-soft); transform:translateY(-1px);}
+  .subject-icon{
+    width:52px;height:52px;border-radius:12px; flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
+    color:var(--gold-soft); font-family:'Kanit',sans-serif; font-weight:700; font-size:15px;
+  }
+  .subject-info{flex:1;}
+  .subject-code{font-family:'Kanit',sans-serif; font-size:11.5px; letter-spacing:.1em; color:var(--gold); font-weight:600; text-transform:uppercase;}
+  .subject-name{font-family:'Kanit',sans-serif; font-size:17.5px; font-weight:600; color:var(--navy); margin:2px 0 3px;}
+  .subject-meta{font-size:13px; color:var(--muted);}
+  .subject-arrow{font-size:20px; color:var(--gold); flex-shrink:0;}
+
+  /* ---------- SETUP (ticket-style) ---------- */
+  .ticket{position:relative;}
+  .ticket-top{
+    background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
+    color:#fff;
+    padding:26px 28px 22px;
+    position:relative;
+  }
+  .ticket-top .kicker{
+    font-family:'Kanit',sans-serif;
+    font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--gold-soft); font-weight:600; margin-bottom:6px;
+  }
+  .ticket-top h2{
+    font-family:'Kanit',sans-serif;
+    margin:0; font-size:21px; font-weight:600; line-height:1.45;
+  }
+  .back-link{
+    display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+    font-size:12.5px; color:var(--gold-soft); margin-bottom:10px; font-family:'Kanit',sans-serif;
+  }
+  .back-link:hover{color:#fff;}
+  .perforation{
+    position:absolute; left:0; right:0; bottom:-1px; height:12px;
+    background-image: radial-gradient(circle, var(--paper) 6px, transparent 6.5px);
+    background-size: 24px 24px;
+    background-position: -6px -6px;
+  }
+  .ticket-body{padding:30px 28px 26px;}
+  .field{margin-bottom:18px;}
+  .field label{
+    display:block; font-size:14px; font-weight:600; color:var(--navy);
+    margin-bottom:7px;
+  }
+  .field input{
+    width:100%; padding:11px 13px; font-size:15.5px; font-family:'Sarabun',sans-serif;
+    border:1.5px solid #DCD5C2; border-radius:9px; background:#FCFBF7; color:var(--ink);
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .field input:focus{
+    outline:none; border-color:var(--navy-soft);
+    box-shadow:0 0 0 3px rgba(58,76,120,0.15);
+  }
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .hint{font-size:12.5px; color:var(--muted); margin-top:14px; line-height:1.6;}
+  .btn{
+    font-family:'Kanit',sans-serif;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; padding:14px 20px; border:none; border-radius:10px;
+    font-size:16px; font-weight:600; cursor:pointer; letter-spacing:.02em;
+    background:var(--navy); color:#fff;
+    transition:background .15s, transform .1s;
+  }
+  .btn:hover{background:var(--navy-2);}
+  .btn:active{transform:scale(.995);}
+  .btn:disabled{background:#B7BBC6; cursor:not-allowed;}
+  .btn-gold{background:var(--gold); color:#2A2005;}
+  .btn-gold:hover{background:#A9843A;}
+  .btn-ghost{
+    background:transparent; color:var(--navy); border:1.5px solid #D6D0BE;
+  }
+  .btn-ghost:hover{background:#F4EFE0;}
+
+  /* ---------- QUIZ ---------- */
+  .quiz-head{
+    position:sticky; top:0; z-index:5;
+    background:rgba(250,246,236,0.92); backdrop-filter:blur(6px);
+    padding:14px 4px 16px; margin-bottom:6px;
+  }
+  .quiz-title-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .quiz-title{font-family:'Kanit',sans-serif; font-size:14px; font-weight:600; color:var(--navy);}
+  .progress-row{display:flex; align-items:center; gap:14px; margin-bottom:10px;}
+  .progress-ring{
+    width:46px;height:46px;border-radius:50%; flex-shrink:0;
+    background:conic-gradient(var(--gold) calc(var(--pct)*1%), #E7E1CF 0);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .progress-ring::after{
+    content:attr(data-label);
+    width:36px;height:36px;border-radius:50%;background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Kanit',sans-serif; font-size:11px; font-weight:600; color:var(--navy);
+  }
+  .progress-text{font-size:14px; color:var(--navy); font-weight:600;}
+  .progress-text span{color:var(--muted); font-weight:400;}
+  .progress-bar{height:6px; border-radius:4px; background:#E7E1CF; overflow:hidden;}
+  .progress-bar-fill{height:100%; background:linear-gradient(90deg, var(--gold), var(--navy-soft)); transition:width .25s ease;}
+
+  .q-card{
+    background:var(--card); border-radius:14px; border:1px solid var(--paper-line);
+    box-shadow:var(--shadow); padding:22px 22px 18px; margin-bottom:16px;
+  }
+  .q-num{
+    font-family:'Kanit',sans-serif; font-size:12.5px; font-weight:600;
+    color:var(--gold); letter-spacing:.08em; margin-bottom:6px;
+  }
+  .q-text{font-size:16.5px; font-weight:600; color:var(--ink); margin-bottom:16px; line-height:1.55;}
+  .choices{display:flex; flex-direction:column; gap:9px;}
+  .choice{
+    display:flex; align-items:center; gap:12px;
+    padding:11px 14px; border-radius:10px; border:1.5px solid #E3DCC9;
+    cursor:pointer; transition:border-color .15s, background .15s;
+    font-size:15px;
+  }
+  .choice:hover{border-color:var(--navy-soft); background:#F7F4EA;}
+  .choice.selected{border-color:var(--navy); background:#EFF1F7;}
+  .choice .letter{
+    width:26px;height:26px;border-radius:50%; flex-shrink:0;
+    border:1.5px solid #C9C2AC; display:flex;align-items:center;justify-content:center;
+    font-family:'Kanit',sans-serif; font-size:13px; font-weight:600; color:var(--navy-soft);
+    background:#fff;
+  }
+  .choice.selected .letter{background:var(--navy); border-color:var(--navy); color:#fff;}
+  .quiz-footer{
+    position:sticky; bottom:0; padding:16px 4px 4px;
+    background:linear-gradient(180deg, rgba(250,246,236,0) 0%, var(--paper) 35%);
+  }
+  .unanswered-note{font-size:13px; color:var(--wrong); text-align:center; margin-bottom:10px; min-height:18px;}
+
+  /* ---------- RESULT ---------- */
+  .result-top{
+    background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
+    color:#fff; padding:34px 28px 30px; text-align:center; position:relative;
+  }
+  .score-badge{
+    width:108px;height:108px;border-radius:50%; margin:0 auto 14px;
+    background:radial-gradient(circle at 35% 30%, #fff, var(--gold-soft) 130%);
+    border:3px solid var(--gold);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .score-badge .num{font-family:'Kanit',sans-serif; font-size:30px; font-weight:700; color:var(--navy); line-height:1;}
+  .score-badge .den{font-size:12px; color:var(--navy-soft); margin-top:2px;}
+  .result-top h2{font-family:'Kanit',sans-serif; font-size:19px; font-weight:600; margin:0 0 4px;}
+  .result-top p{font-size:14px; color:#D8DEEC; margin:0;}
+  .result-body{padding:24px 26px 26px;}
+  .review-list{display:flex; flex-direction:column; gap:8px; margin-bottom:22px;}
+  .review-item{
+    display:flex; align-items:center; gap:12px;
+    padding:10px 13px; border-radius:9px; font-size:14px;
+  }
+  .review-item.correct{background:var(--correct-bg); color:var(--correct);}
+  .review-item.wrong{background:var(--wrong-bg); color:var(--wrong);}
+  .review-item .idx{
+    font-family:'Kanit',sans-serif; font-weight:700; font-size:12.5px;
+    width:22px;height:22px;border-radius:50%; display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.65); flex-shrink:0;
+  }
+  .review-item .detail{flex:1; color:var(--ink); font-size:13.5px;}
+  .review-item .mark{font-family:'Kanit',sans-serif; font-weight:600; font-size:13px;}
+  .btn-row{display:flex; gap:10px;}
+
+  .foot-note{text-align:center; font-size:12px; color:var(--muted); margin-top:22px; line-height:1.7;}
+
+  .hidden{display:none !important;}
+
+  @media (max-width:480px){
+    .field-row{grid-template-columns:1fr;}
+    .ticket-top, .ticket-body, .result-body{padding-left:20px; padding-right:20px;}
+    .subject-card{padding:18px;}
+  }
+
+  /* ================= PDF TEMPLATE (off-screen render source) ================= */
+  #pdf-template{
+    position:absolute; left:-99999px; top:0;
+    width:794px; background:#fff; color:#111;
+    font-family:'Sarabun',sans-serif;
+    padding:52px 56px 46px;
+  }
+  #pdf-template .pdf-header{
+    text-align:center; font-family:'Sarabun',sans-serif; font-weight:700;
+    font-size:18px; line-height:1.9; margin-bottom:2px; color:#111;
+  }
+  #pdf-template .pdf-subheader{
+    text-align:center; font-size:13px; color:#555; margin-bottom:26px;
+  }
+  #pdf-template table.result-table{
+    width:100%; border-collapse:collapse; margin-bottom:30px; font-size:13.5px;
+  }
+  #pdf-template table.result-table th, #pdf-template table.result-table td{
+    border:1px solid #999; padding:9px 10px; text-align:center;
+  }
+  #pdf-template table.result-table th{background:#EEF0F5; font-weight:700;}
+  #pdf-template .section-title{
+    font-weight:700; font-size:14.5px; margin:0 0 12px; color:#111;
+    border-left:4px solid #16233F; padding-left:10px;
+  }
+  #pdf-template table.detail-table{
+    width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:30px;
+  }
+  #pdf-template table.detail-table th, #pdf-template table.detail-table td{
+    border:1px solid #bbb; padding:6px 8px; text-align:center;
+  }
+  #pdf-template table.detail-table th{background:#F5F5F0; font-weight:700;}
+  #pdf-template .signature-block{
+    margin-top:44px; display:flex; justify-content:flex-end;
+  }
+  #pdf-template .signature-inner{ text-align:center; font-size:13.5px; line-height:2.1; }
+  #pdf-template .sig-line{margin-bottom:4px;}
+  #pdf-template .gen-note{
+    margin-top:40px; font-size:10.5px; color:#888; text-align:left;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="brandline">
+    <div class="seal">สกร</div>
+  </div>
+  <div class="eyebrow">ระดับมัธยมศึกษาตอนปลาย</div>
+  <h1 class="title" id="page-title">ระบบแบบทดสอบรายวิชา</h1>
+
+  <!-- ================= SUBJECT SELECT VIEW ================= -->
+  <div id="view-select">
+    <div class="subject-grid" id="subject-grid"></div>
+  </div>
+
+  <!-- ================= SETUP VIEW ================= -->
+  <div id="view-setup" class="hidden card ticket">
+    <div class="ticket-top">
+      <div class="back-link" id="back-to-select">‹ เลือกวิชาใหม่</div>
+      <div class="kicker">ก่อนเริ่มทำแบบทดสอบ</div>
+      <h2 id="setup-heading">กรอกข้อมูลผู้เข้าสอบ</h2>
+      <div class="perforation"></div>
+    </div>
+    <div class="ticket-body">
+      <div class="field">
+        <label for="in-name">ชื่อ-นามสกุลผู้เรียน</label>
+        <input id="in-name" type="text" placeholder="เช่น นายสมชาย ใจดี">
+      </div>
+      <div class="field">
+        <label for="in-subject">ชื่อรายวิชา</label>
+        <input id="in-subject" type="text">
+      </div>
+      <div class="field">
+        <label for="in-level">ระดับชั้น</label>
+        <input id="in-level" type="text" value="มัธยมศึกษาตอนปลาย">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="in-term">ภาคเรียนที่</label>
+          <input id="in-term" type="text" value="1">
+        </div>
+        <div class="field">
+          <label for="in-year">ปีการศึกษา</label>
+          <input id="in-year" type="text" value="2569">
+        </div>
+      </div>
+      <button class="btn btn-gold" id="btn-start">เริ่มทำแบบทดสอบ (15 ข้อ)</button>
+      <div class="hint">เมื่อทำแบบทดสอบเสร็จแล้ว ระบบจะให้ดาวน์โหลดไฟล์ PDF พร้อมตารางผลคะแนนและช่องลงลายมือชื่อครูผู้สอน เพื่อใช้เป็นหลักฐานประกอบการส่งงาน</div>
+    </div>
+  </div>
+
+  <!-- ================= QUIZ VIEW ================= -->
+  <div id="view-quiz" class="hidden">
+    <div class="quiz-head">
+      <div class="quiz-title-row">
+        <div class="quiz-title" id="quiz-title-text"></div>
+      </div>
+      <div class="progress-row">
+        <div class="progress-ring" id="progress-ring" data-label="0/15" style="--pct:0"></div>
+        <div style="flex:1">
+          <div class="progress-text" id="progress-text">ตอบแล้ว 0 ข้อ <span>จากทั้งหมด 15 ข้อ</span></div>
+          <div class="progress-bar"><div class="progress-bar-fill" id="progress-bar-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="question-list"></div>
+
+    <div class="quiz-footer">
+      <div class="unanswered-note" id="unanswered-note"></div>
+      <button class="btn btn-gold" id="btn-submit">ส่งคำตอบและดูผลคะแนน</button>
+    </div>
+  </div>
+
+  <!-- ================= RESULT VIEW ================= -->
+  <div id="view-result" class="hidden card">
+    <div class="result-top">
+      <div class="score-badge">
+        <div class="num" id="score-num">0/15</div>
+        <div class="den">คะแนนที่ได้</div>
+      </div>
+      <h2 id="result-name-line">ผลการทำแบบทดสอบ</h2>
+      <p id="result-sub-line"></p>
+    </div>
+    <div class="result-body">
+      <p class="hint" id="sync-note" style="margin:0 0 18px;"></p>
+      <div class="review-list" id="review-list"></div>
+      <div class="btn-row">
+        <button class="btn" id="btn-download">ดาวน์โหลดไฟล์ PDF (หลักฐาน)</button>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-ghost" id="btn-restart">ทำแบบทดสอบวิชาอื่น / ทำใหม่</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot-note">ระบบแบบทดสอบสำหรับผู้เรียนสำนักงานส่งเสริมการเรียนรู้ (สกร.) · ไฟล์ PDF ที่สร้างขึ้นสามารถใช้เป็นหลักฐานประกอบการส่งงานได้ทันที</div>
+</div>
+
+<!-- ================= HIDDEN PDF TEMPLATE ================= -->
+<div id="pdf-template">
+  <div class="pdf-header" id="pdf-header"></div>
+  <div class="pdf-subheader" id="pdf-subheader"></div>
+
+  <div class="section-title">ตารางผลการทำแบบทดสอบ</div>
+  <table class="result-table">
+    <thead>
+      <tr><th>ชื่อ-นามสกุล</th><th>ชื่อวิชา</th><th>คะแนนที่ได้</th><th>คะแนนเต็ม</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td id="pdf-name"></td>
+        <td id="pdf-subject"></td>
+        <td id="pdf-score"></td>
+        <td id="pdf-full"></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-title">รายละเอียดผลการทำแบบทดสอบรายข้อ</div>
+  <table class="detail-table">
+    <thead>
+      <tr><th style="width:14%">ข้อที่</th><th>คำตอบที่เลือก</th><th style="width:22%">ผลลัพธ์</th></tr>
+    </thead>
+    <tbody id="pdf-detail-body"></tbody>
+  </table>
+
+  <div class="signature-block">
+    <div class="signature-inner">
+      <div class="sig-line">ลงชื่อ .................................................... </div>
+      <div class="sig-line" id="pdf-sig-name">( .................................................... )</div>
+      <div class="sig-line">ครูผู้สอน / ครูประจำกลุ่ม</div>
+      <div class="sig-line" id="pdf-date">วันที่ .......... เดือน .......................... พ.ศ. ..........</div>
+    </div>
+  </div>
+
+  <div class="gen-note" id="pdf-gen-note"></div>
+</div>
+
+<script>
+// ---------------------------------------------------------------
+// DATA — extracted from uploaded ข้อสอบ .docx files
+// ---------------------------------------------------------------
+const LETTERS = ['ก','ข','ค','ง'];
+
+// ---------------------------------------------------------------
+// GOOGLE SHEET SYNC (optional)
+// วาง Web App URL ที่ได้จากการ Deploy Google Apps Script ตรงนี้
+// ถ้าปล่อยว่างไว้ ระบบจะยังทำงานได้ปกติ เพียงแต่จะไม่บันทึกผลสอบไปที่ Google Sheet
+// ---------------------------------------------------------------
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxCnJ2Pz4jgbhVEpatgGik6-sAk36nIcBnjiFYJ4niAr444xn3g2BfC69WxnxHzaw9BvQ/exec";
+
+function sendResultToSheet(payload){
+  if(!GOOGLE_SCRIPT_URL) return;
+  try{
+    fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors', // fire-and-forget เพื่อเลี่ยงปัญหา CORS ของ Apps Script
+      body: JSON.stringify(payload)
+    });
+  }catch(err){
+    console.warn('ไม่สามารถบันทึกผลสอบไปยัง Google Sheet ได้', err);
+  }
+}
+
+const SUBJECTS = {
+  learning_skills: {
+    code: 'ทร31001',
+    name: 'ทักษะการเรียนรู้',
+    icon: 'ทร',
+    questions: [
+      { q:"การเรียนรู้ตลอดชีวิต (Lifelong Learning) หมายถึงข้อใด",
+        choices:["การเรียนเฉพาะในห้องเรียน","การเรียนรู้เฉพาะวัยเด็ก","การเรียนรู้ที่เกิดขึ้นอย่างต่อเนื่องตลอดชีวิต","การเรียนรู้เฉพาะจากหนังสือ"], answer:2 },
+      { q:"ข้อใดเป็นลักษณะของผู้เรียนที่มีทักษะการเรียนรู้ที่ดี",
+        choices:["รอให้ผู้อื่นบอกคำตอบเสมอ","ศึกษาค้นคว้าด้วยตนเองและแสวงหาความรู้","ไม่รับฟังความคิดเห็นของผู้อื่น","หยุดเรียนรู้เมื่อสำเร็จการศึกษา"], answer:1 },
+      { q:"การตั้งเป้าหมายในการเรียนช่วยให้เกิดผลอย่างไร",
+        choices:["ทำให้เสียเวลา","ทำให้เรียนโดยไม่มีทิศทาง","ทำให้วางแผนและติดตามความก้าวหน้าได้","ทำให้ไม่ต้องประเมินผล"], answer:2 },
+      { q:"แหล่งเรียนรู้ใดเป็นแหล่งเรียนรู้ในชุมชน",
+        choices:["ห้องสมุดประชาชน","ตลาดชุมชน","ศูนย์การเรียนรู้ชุมชน","ถูกทุกข้อ"], answer:3 },
+      { q:"ข้อใดเป็นการใช้เทคโนโลยีสารสนเทศเพื่อการเรียนรู้อย่างเหมาะสม",
+        choices:["คัดลอกผลงานผู้อื่นทั้งหมด","ตรวจสอบความน่าเชื่อถือของข้อมูลก่อนนำไปใช้","เชื่อข้อมูลทุกเว็บไซต์","ไม่อ้างอิงแหล่งที่มา"], answer:1 },
+      { q:"การทำงานเป็นกลุ่มที่ดีควรมีลักษณะอย่างไร",
+        choices:["คนเดียวเป็นผู้ตัดสินใจทั้งหมด","รับฟังความคิดเห็นและแบ่งหน้าที่กัน","ไม่รับผิดชอบงานที่ได้รับ","แข่งขันกันภายในกลุ่ม"], answer:1 },
+      { q:"การบริหารเวลาในการเรียนที่ดีควรทำอย่างไร",
+        choices:["อ่านหนังสือเฉพาะคืนก่อนสอบ","วางแผนการเรียนและแบ่งเวลาอย่างเหมาะสม","เล่นเกมก่อนแล้วค่อยอ่านหนังสือ","ไม่กำหนดเวลาในการเรียน"], answer:1 },
+      { q:"ข้อใดเป็นประโยชน์ของการจดบันทึก",
+        choices:["ทำให้ลืมง่ายขึ้น","ช่วยสรุปและทบทวนความรู้","ใช้เวลามากโดยไม่เกิดประโยชน์","ทำให้ไม่ต้องอ่านหนังสือ"], answer:1 },
+      { q:"การคิดอย่างมีวิจารณญาณ คือข้อใด",
+        choices:["เชื่อทุกข้อมูลทันที","วิเคราะห์ข้อมูลก่อนตัดสินใจ","ปฏิเสธทุกความคิดเห็น","ใช้อารมณ์ในการตัดสินใจ"], answer:1 },
+      { q:"หากพบข้อมูลจากหลายแหล่ง ควรปฏิบัติอย่างไร",
+        choices:["เลือกข้อมูลที่ตรงใจที่สุด","เปรียบเทียบและตรวจสอบความถูกต้อง","ใช้ข้อมูลจากแหล่งเดียว","ไม่จำเป็นต้องตรวจสอบ"], answer:1 },
+      { q:"การประเมินผลการเรียนรู้ของตนเองมีประโยชน์อย่างไร",
+        choices:["ช่วยทราบจุดแข็งและจุดที่ต้องพัฒนา","ทำให้ไม่ต้องเรียนต่อ","ทำให้ไม่ต้องทำแบบฝึกหัด","ไม่มีประโยชน์"], answer:0 },
+      { q:"ข้อใดเป็นคุณลักษณะของผู้เรียนรู้ด้วยตนเอง",
+        choices:["มีความรับผิดชอบ","ใฝ่เรียนรู้","มีวินัย","ถูกทุกข้อ"], answer:3 },
+      { q:"การใช้ห้องสมุดอย่างมีประสิทธิภาพควรทำอย่างไร",
+        choices:["ยืมหนังสือแล้วไม่คืน","เลือกหนังสือที่เกี่ยวข้องกับเรื่องที่ศึกษา","ใช้ห้องสมุดเพื่อพูดคุยเสียงดัง","ไม่ศึกษาวิธีสืบค้นข้อมูล"], answer:1 },
+      { q:"ข้อใดเป็นการเรียนรู้จากประสบการณ์",
+        choices:["ฝึกปฏิบัติจริง","อ่านเฉพาะหนังสือ","ฟังผู้อื่นเพียงอย่างเดียว","ท่องจำอย่างเดียว"], answer:0 },
+      { q:"การเรียนรู้ที่มีประสิทธิภาพควรเริ่มต้นจากสิ่งใด",
+        choices:["ความสนใจและความตั้งใจของผู้เรียน","การลอกงานเพื่อน","การรอคำสั่งจากผู้อื่น","การเรียนเฉพาะช่วงสอบ"], answer:0 },
+    ]
+  },
+  science: {
+    code: 'พว31001',
+    name: 'วิทยาศาสตร์',
+    icon: 'พว',
+    questions: [
+      { q:"ข้อใดเป็นลักษณะของการใช้กระบวนการทางวิทยาศาสตร์",
+        choices:["เชื่อตามคำบอกเล่า","ทดลองและตรวจสอบข้อมูล","คาดเดาโดยไม่มีหลักฐาน","ตัดสินใจจากความรู้สึก"], answer:1 },
+      { q:"ข้อใดเป็นพลังงานหมุนเวียน",
+        choices:["ถ่านหิน","น้ำมันดิบ","พลังงานแสงอาทิตย์","ก๊าซธรรมชาติ"], answer:2 },
+      { q:"หน่วยพื้นฐานของสิ่งมีชีวิตคือข้อใด",
+        choices:["เนื้อเยื่อ","เซลล์","อวัยวะ","ระบบอวัยวะ"], answer:1 },
+      { q:"ข้อใดเป็นการเปลี่ยนแปลงทางเคมี",
+        choices:["น้ำแข็งละลาย","ต้มน้ำเดือด","เหล็กเกิดสนิม","ฉีกกระดาษ"], answer:2 },
+      { q:"ข้อใดเป็นประโยชน์ของชั้นบรรยากาศโลก",
+        choices:["ป้องกันรังสีอันตรายบางส่วนจากดวงอาทิตย์","ทำให้เกิดแผ่นดินไหว","ทำให้เกิดน้ำขึ้นน้ำลง","ทำให้โลกหมุนรอบตัวเอง"], answer:0 },
+      { q:"อวัยวะใดทำหน้าที่สูบฉีดเลือด",
+        choices:["ปอด","ตับ","หัวใจ","ไต"], answer:2 },
+      { q:"สารใดมีค่า pH ต่ำกว่า 7",
+        choices:["น้ำสบู่","น้ำมะนาว","น้ำปูนใส","น้ำยาซักผ้า"], answer:1 },
+      { q:"ข้อใดเป็นการอนุรักษ์พลังงาน",
+        choices:["เปิดไฟทุกดวง","ปิดไฟเมื่อไม่ใช้งาน","เปิดเครื่องปรับอากาศทิ้งไว้","ใช้เครื่องใช้ไฟฟ้าพร้อมกันทุกชนิด"], answer:1 },
+      { q:"โลกโคจรรอบดวงอาทิตย์ใช้เวลาประมาณเท่าใด",
+        choices:["24 ชั่วโมง","30 วัน","365 วัน","730 วัน"], answer:2 },
+      { q:"ข้อใดเป็นโรคที่เกิดจากเชื้อไวรัส",
+        choices:["ไข้เลือดออก","อหิวาตกโรค","บาดทะยัก","วัณโรค"], answer:0 },
+      { q:"แรงโน้มถ่วงของโลกมีผลอย่างไร",
+        choices:["ทำให้วัตถุลอยขึ้น","ทำให้วัตถุตกสู่พื้น","ทำให้เกิดลม","ทำให้เกิดแสง"], answer:1 },
+      { q:"ข้อใดเป็นทรัพยากรธรรมชาติที่ใช้แล้วหมดไป",
+        choices:["แสงอาทิตย์","ลม","ปิโตรเลียม","น้ำ"], answer:2 },
+      { q:"การแยกขยะก่อนทิ้งมีประโยชน์อย่างไร",
+        choices:["เพิ่มปริมาณขยะ","ลดการนำกลับมาใช้ใหม่","ช่วยรีไซเคิลและลดมลพิษ","ทำให้สิ้นเปลืองพื้นที่"], answer:2 },
+      { q:"ข้อใดเป็นตัวอย่างของแรงเสียดทาน",
+        choices:["ลูกบอลกลิ้งช้าลงบนพื้น","ดวงจันทร์โคจรรอบโลก","น้ำเดือด","แสงสะท้อนกระจก"], answer:0 },
+      { q:"การรับประทานอาหารครบ 5 หมู่ มีประโยชน์อย่างไร",
+        choices:["ทำให้ร่างกายได้รับสารอาหารครบถ้วน","ทำให้นอนน้อยลง","ทำให้ไม่ต้องออกกำลังกาย","ทำให้ไม่ต้องดื่มน้ำ"], answer:0 },
+    ]
+  },
+  social_studies: {
+    code: 'สค31001',
+    name: 'สังคมศึกษา',
+    icon: 'สค',
+    questions: [
+      { q:"ข้อใดกล่าวถึงความหมายของสังคมได้ถูกต้องที่สุด",
+        choices:["กลุ่มคนที่อยู่ร่วมกันโดยไม่มีความสัมพันธ์","กลุ่มคนที่อยู่ร่วมกันและมีความสัมพันธ์ตามกฎระเบียบ","กลุ่มสัตว์ที่อาศัยอยู่ร่วมกัน","การอยู่คนเดียวอย่างอิสระ"], answer:1 },
+      { q:"ข้อใดเป็นหน้าที่สำคัญของพลเมืองไทย",
+        choices:["ไม่เสียภาษี","ปฏิบัติตามกฎหมาย","ไม่ไปใช้สิทธิเลือกตั้ง","ทำลายทรัพย์สินของรัฐ"], answer:1 },
+      { q:"รัฐธรรมนูญมีความสำคัญอย่างไร",
+        choices:["เป็นกฎหมายสูงสุดของประเทศ","เป็นกฎหมายเฉพาะโรงเรียน","ใช้เฉพาะข้าราชการ","ใช้เฉพาะศาล"], answer:0 },
+      { q:"หลักธรรมข้อใดช่วยให้คนอยู่ร่วมกันอย่างสงบ",
+        choices:["เมตตา","โลภ","โกรธ","อคติ"], answer:0 },
+      { q:"ข้อใดเป็นการอนุรักษ์ทรัพยากรธรรมชาติ",
+        choices:["เผาป่า","ปลูกป่า","ทิ้งขยะลงแม่น้ำ","ใช้ทรัพยากรอย่างสิ้นเปลือง"], answer:1 },
+      { q:"ประชาธิปไตยยึดหลักสำคัญข้อใด",
+        choices:["อำนาจเป็นของประชาชน","อำนาจเป็นของคนกลุ่มเดียว","ไม่มีการเลือกตั้ง","ใช้กำลังตัดสินปัญหา"], answer:0 },
+      { q:"เศรษฐกิจพอเพียงเน้นสิ่งใด",
+        choices:["ความฟุ่มเฟือย","ความพอประมาณ","การกู้เงินจำนวนมาก","การลงทุนที่มีความเสี่ยงสูง"], answer:1 },
+      { q:"ข้อใดเป็นสิทธิขั้นพื้นฐานของประชาชน",
+        choices:["สิทธิในการศึกษา","สิทธิทำผิดกฎหมาย","สิทธิหลีกเลี่ยงภาษี","สิทธิละเมิดผู้อื่น"], answer:0 },
+      { q:"องค์กรปกครองส่วนท้องถิ่นมีหน้าที่สำคัญคือข้อใด",
+        choices:["ดูแลและพัฒนาท้องถิ่น","ออกกฎหมายรัฐธรรมนูญ","ดูแลกองทัพ","พิจารณาคดี"], answer:0 },
+      { q:"ข้อใดเป็นการมีส่วนร่วมของประชาชน",
+        choices:["ไม่สนใจชุมชน","ร่วมประชุมหมู่บ้าน","ไม่ใช้สิทธิเลือกตั้ง","ทำลายทรัพย์สินสาธารณะ"], answer:1 },
+      { q:"การเสียภาษีมีประโยชน์อย่างไร",
+        choices:["ทำให้รัฐมีรายได้พัฒนาประเทศ","ทำให้ประชาชนยากจน","ไม่มีประโยชน์","ใช้เฉพาะภาคเอกชน"], answer:0 },
+      { q:"ข้อใดเป็นลักษณะของพลเมืองดี",
+        choices:["มีวินัย","รับผิดชอบ","เคารพกฎหมาย","ถูกทุกข้อ"], answer:3 },
+      { q:"การเลือกตั้งมีความสำคัญอย่างไร",
+        choices:["เลือกผู้แทนของประชาชน","เลือกผู้พิพากษา","เลือกตำรวจ","เลือกครู"], answer:0 },
+      { q:"การแก้ปัญหาความขัดแย้งควรใช้วิธีใด",
+        choices:["ความรุนแรง","การเจรจา","การด่าทอ","การทำร้ายร่างกาย"], answer:1 },
+      { q:"ข้อใดเป็นประโยชน์ของการอยู่ร่วมกันในสังคม",
+        choices:["เกิดความร่วมมือ","เกิดความแตกแยก","เกิดความขัดแย้ง","เกิดความไม่รับผิดชอบ"], answer:0 },
+    ]
+  },
+  electrical_energy: {
+    code: 'พว32023',
+    name: 'การใช้พลังงานไฟฟ้าในชีวิตประจำวัน 3',
+    icon: 'พว3',
+    questions: [
+      { q:"พลังงานไฟฟ้ามีความสำคัญต่อชีวิตประจำวันอย่างไร",
+        choices:["ใช้เฉพาะในโรงงานอุตสาหกรรม","ใช้เฉพาะเวลากลางคืน","ใช้ในการดำรงชีวิต การศึกษา และการประกอบอาชีพ","ใช้เฉพาะในเมืองใหญ่"], answer:2 },
+      { q:"หน่วยที่ใช้วัดพลังงานไฟฟ้าที่ใช้ในบ้าน คือข้อใด",
+        choices:["โวลต์ (Volt)","แอมแปร์ (Ampere)","วัตต์ (Watt)","กิโลวัตต์-ชั่วโมง (kWh)"], answer:3 },
+      { q:"ข้อใดเป็นอุปกรณ์ป้องกันกระแสไฟฟ้าเกินในบ้าน",
+        choices:["หลอดไฟ","ฟิวส์","พัดลม","เต้ารับ"], answer:1 },
+      { q:"หากพบสายไฟชำรุด ควรปฏิบัติอย่างไร",
+        choices:["ใช้งานต่อไป","ใช้เท้าเขี่ยสายไฟ","เปลี่ยนหรือซ่อมโดยผู้มีความรู้","พันด้วยกระดาษ"], answer:2 },
+      { q:"การถอดปลั๊กเครื่องใช้ไฟฟ้าที่ถูกต้องควรทำอย่างไร",
+        choices:["ดึงสายไฟ","ดึงที่ตัวปลั๊ก","ใช้ของมีคมงัด","ดึงแรง ๆ ที่สายไฟ"], answer:1 },
+      { q:"ข้อใดช่วยประหยัดพลังงานไฟฟ้าได้ดีที่สุด",
+        choices:["เปิดไฟทุกห้อง","เปิดเครื่องใช้ไฟฟ้าทิ้งไว้","ปิดไฟและถอดปลั๊กเมื่อไม่ใช้งาน","เปิดโทรทัศน์ไว้ตลอดวัน"], answer:2 },
+      { q:"เครื่องใช้ไฟฟ้าที่มีฉลากประหยัดไฟเบอร์ 5 หมายถึงอะไร",
+        choices:["ใช้ไฟมากที่สุด","มีประสิทธิภาพในการประหยัดพลังงาน","ใช้ได้เฉพาะเวลากลางวัน","ผลิตในประเทศไทยเท่านั้น"], answer:1 },
+      { q:"ข้อใดเป็นสาเหตุสำคัญของไฟฟ้าลัดวงจร",
+        choices:["ใช้หลอด LED","สายไฟชำรุดหรือฉนวนเสียหาย","ปิดสวิตช์ไฟ","ถอดปลั๊กหลังใช้งาน"], answer:1 },
+      { q:"ก่อนซ่อมเครื่องใช้ไฟฟ้าควรทำสิ่งใดก่อน",
+        choices:["เปิดสวิตช์ไฟ","ถอดปลั๊กไฟออก","ราดน้ำ","ใช้มือจับสายไฟ"], answer:1 },
+      { q:"ข้อใดเป็นพลังงานทดแทนที่ใช้ผลิตไฟฟ้า",
+        choices:["น้ำมันเครื่อง","พลังงานแสงอาทิตย์","ถ่านไม้","น้ำมันก๊าด"], answer:1 },
+      { q:"การใช้ปลั๊กพ่วงอย่างปลอดภัยควรเป็นอย่างไร",
+        choices:["เสียบซ้อนหลายชั้น","ใช้เกินกำลังไฟที่กำหนด","ใช้ตามกำลังไฟที่ระบุ","วางไว้บนที่เปียกน้ำ"], answer:2 },
+      { q:"ข้อใดเป็นอันตรายจากการใช้ไฟฟ้า",
+        choices:["ไฟฟ้าดูด","ทำให้อากาศเย็นลง","ทำให้ประหยัดไฟ","เพิ่มความสว่าง"], answer:0 },
+      { q:"หากมีผู้ถูกไฟฟ้าดูด สิ่งแรกที่ควรทำคือข้อใด",
+        choices:["ดึงตัวผู้ประสบเหตุทันที","ตัดกระแสไฟก่อนช่วยเหลือ","ราดน้ำใส่ผู้ประสบเหตุ","จับสายไฟออกด้วยมือเปล่า"], answer:1 },
+      { q:"การเลือกซื้อเครื่องใช้ไฟฟ้าควรพิจารณาข้อใด",
+        choices:["สีของเครื่องใช้ไฟฟ้า","ขนาดกล่องบรรจุ","มาตรฐานความปลอดภัยและฉลากประหยัดไฟ","ราคาถูกที่สุดเพียงอย่างเดียว"], answer:2 },
+      { q:"การใช้พลังงานไฟฟ้าอย่างมีประสิทธิภาพก่อให้เกิดผลดีอย่างไร",
+        choices:["เพิ่มค่าไฟฟ้า","สิ้นเปลืองทรัพยากร","ลดค่าใช้จ่ายและช่วยรักษาสิ่งแวดล้อม","ใช้ไฟฟ้าได้มากขึ้นโดยไม่จำกัด"], answer:2 },
+    ]
+  },
+  career_expansion: {
+    code: 'อช31001',
+    name: 'ช่องทางการขยายอาชีพ',
+    icon: 'อช',
+    questions: [
+      { q:"การเลือกอาชีพควรพิจารณาสิ่งใดเป็นอันดับแรก",
+        choices:["ความถนัดและความสนใจ","คำชวนของเพื่อน","ความนิยมเพียงอย่างเดียว","เลือกโดยไม่วางแผน"], answer:0 },
+      { q:"การศึกษาความต้องการของตลาดมีประโยชน์อย่างไร",
+        choices:["ผลิตสินค้าได้ตรงความต้องการ","เพิ่มต้นทุน","ลดคุณภาพสินค้า","ทำให้ขายไม่ได้"], answer:0 },
+      { q:"ข้อใดเป็นการเพิ่มช่องทางการจำหน่ายสินค้า",
+        choices:["ขายเฉพาะหน้าร้าน","ขายผ่านสื่อออนไลน์","ไม่ประชาสัมพันธ์สินค้า","ปิดร้านบ่อย"], answer:1 },
+      { q:"การวิเคราะห์ SWOT ตัวอักษร S หมายถึงข้อใด",
+        choices:["จุดแข็ง","จุดอ่อน","โอกาส","อุปสรรค"], answer:0 },
+      { q:"ข้อใดเป็นต้นทุนในการประกอบอาชีพ",
+        choices:["ค่าวัตถุดิบ","ค่าแรงงาน","ค่าน้ำค่าไฟ","ถูกทุกข้อ"], answer:3 },
+      { q:"การบริการลูกค้าที่ดีส่งผลอย่างไร",
+        choices:["ลูกค้ากลับมาซื้อซ้ำ","ลูกค้าลดลง","ขายสินค้าไม่ได้","ต้นทุนสูงขึ้นเสมอ"], answer:0 },
+      { q:"ข้อใดเป็นตัวอย่างของการตลาดออนไลน์",
+        choices:["โพสต์ขายสินค้าผ่าน Facebook","ติดป้ายหน้าบ้านเพียงอย่างเดียว","แจกใบปลิวเท่านั้น","บอกต่อเฉพาะคนในครอบครัว"], answer:0 },
+      { q:"การทำบัญชีรายรับรายจ่ายช่วยให้เกิดประโยชน์อย่างไร",
+        choices:["ทราบกำไรและขาดทุน","ใช้เงินมากขึ้น","ไม่ต้องวางแผน","ไม่จำเป็นต้องเก็บข้อมูล"], answer:0 },
+      { q:"ผู้ประกอบอาชีพควรมีคุณธรรมข้อใด",
+        choices:["ซื่อสัตย์","รับผิดชอบ","ขยัน","ถูกทุกข้อ"], answer:3 },
+      { q:"การประชาสัมพันธ์สินค้าควรมีลักษณะอย่างไร",
+        choices:["ให้ข้อมูลที่เป็นจริง","โฆษณาเกินจริง","หลอกลวงลูกค้า","ไม่ให้ข้อมูลสินค้า"], answer:0 },
+      { q:"ข้อใดเป็นปัจจัยสำคัญในการตัดสินใจประกอบอาชีพ",
+        choices:["เงินทุน","ความรู้","ทักษะ","ถูกทุกข้อ"], answer:3 },
+      { q:"หากยอดขายลดลง ควรทำอย่างไร",
+        choices:["วิเคราะห์สาเหตุและปรับปรุง","เลิกกิจการทันที","ไม่สนใจ","เพิ่มราคาโดยไม่มีเหตุผล"], answer:0 },
+      { q:"การสร้างความแตกต่างของสินค้า มีวัตถุประสงค์เพื่ออะไร",
+        choices:["เพิ่มความน่าสนใจ","ลดคุณภาพ","เพิ่มต้นทุนโดยไม่จำเป็น","ทำให้ลูกค้าสับสน"], answer:0 },
+      { q:"ข้อใดเป็นคุณลักษณะของผู้ประกอบการที่ประสบความสำเร็จ",
+        choices:["อดทน","มีความคิดสร้างสรรค์","รับผิดชอบ","ถูกทุกข้อ"], answer:3 },
+      { q:"การวางแผนธุรกิจที่ดีมีประโยชน์อย่างไร",
+        choices:["ช่วยให้ดำเนินธุรกิจอย่างเป็นระบบ","ทำให้ต้นทุนสูงขึ้นเสมอ","ทำให้ไม่ต้องศึกษาตลาด","ไม่มีผลต่อความสำเร็จ"], answer:0 },
+    ]
+  }
+};
+
+const state = { answers: [], info:{}, subjectKey:null };
+
+// ---------------------------------------------------------------
+// SUBJECT SELECT VIEW
+// ---------------------------------------------------------------
+const subjectGrid = document.getElementById('subject-grid');
+Object.entries(SUBJECTS).forEach(([key, subj]) => {
+  const card = document.createElement('div');
+  card.className = 'subject-card';
+  card.innerHTML = `
+    <div class="subject-icon">${subj.icon}</div>
+    <div class="subject-info">
+      <div class="subject-code">${subj.code}</div>
+      <div class="subject-name">วิชา${subj.name}</div>
+      <div class="subject-meta">${subj.questions.length} ข้อ · ระดับมัธยมศึกษาตอนปลาย</div>
+    </div>
+    <div class="subject-arrow">›</div>
+  `;
+  card.addEventListener('click', () => chooseSubject(key));
+  subjectGrid.appendChild(card);
+});
+
+function chooseSubject(key){
+  state.subjectKey = key;
+  const subj = SUBJECTS[key];
+  state.answers = new Array(subj.questions.length).fill(null);
+
+  document.getElementById('setup-heading').textContent = `กรอกข้อมูลผู้เข้าสอบ — วิชา${subj.name}`;
+  document.getElementById('in-subject').value = `${subj.code} ${subj.name}`;
+
+  renderQuestions();
+
+  document.getElementById('view-select').classList.add('hidden');
+  document.getElementById('view-setup').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+document.getElementById('back-to-select').addEventListener('click', () => {
+  document.getElementById('view-setup').classList.add('hidden');
+  document.getElementById('view-select').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+// ---------------------------------------------------------------
+// RENDER QUESTIONS (called after subject chosen)
+// ---------------------------------------------------------------
+const listEl = document.getElementById('question-list');
+
+function renderQuestions(){
+  const questions = SUBJECTS[state.subjectKey].questions;
+  listEl.innerHTML = '';
+  document.getElementById('quiz-title-text').textContent =
+    `วิชา${SUBJECTS[state.subjectKey].name} (${SUBJECTS[state.subjectKey].code})`;
+
+  questions.forEach((item, qi) => {
+    const card = document.createElement('div');
+    card.className = 'q-card';
+    card.innerHTML = `
+      <div class="q-num">ข้อที่ ${qi+1} จาก ${questions.length}</div>
+      <div class="q-text">${item.q}</div>
+      <div class="choices" id="choices-${qi}"></div>
+    `;
+    listEl.appendChild(card);
+    const choicesEl = card.querySelector(`#choices-${qi}`);
+    item.choices.forEach((c, ci) => {
+      const opt = document.createElement('div');
+      opt.className = 'choice';
+      opt.dataset.qi = qi; opt.dataset.ci = ci;
+      opt.innerHTML = `<span class="letter">${LETTERS[ci]}</span><span>${c}</span>`;
+      opt.addEventListener('click', () => selectAnswer(qi, ci));
+      choicesEl.appendChild(opt);
+    });
+  });
+  updateProgress();
+}
+
+function selectAnswer(qi, ci){
+  state.answers[qi] = ci;
+  document.querySelectorAll(`.choice[data-qi="${qi}"]`).forEach(el=>{
+    el.classList.toggle('selected', Number(el.dataset.ci) === ci);
+  });
+  updateProgress();
+}
+
+function updateProgress(){
+  const total = SUBJECTS[state.subjectKey].questions.length;
+  const answered = state.answers.filter(a => a !== null).length;
+  const pct = Math.round((answered/total)*100);
+  document.getElementById('progress-text').innerHTML = `ตอบแล้ว ${answered} ข้อ <span>จากทั้งหมด ${total} ข้อ</span>`;
+  document.getElementById('progress-bar-fill').style.width = pct + '%';
+  const ring = document.getElementById('progress-ring');
+  ring.style.setProperty('--pct', pct);
+  ring.setAttribute('data-label', `${answered}/${total}`);
+}
+
+// ---------------------------------------------------------------
+// VIEW SWITCHING
+// ---------------------------------------------------------------
+const viewSetup = document.getElementById('view-setup');
+const viewQuiz = document.getElementById('view-quiz');
+const viewResult = document.getElementById('view-result');
+const viewSelect = document.getElementById('view-select');
+
+document.getElementById('btn-start').addEventListener('click', () => {
+  const name = document.getElementById('in-name').value.trim();
+  if(!name){
+    document.getElementById('in-name').focus();
+    document.getElementById('in-name').style.borderColor = 'var(--wrong)';
+    return;
+  }
+  state.info = {
+    name,
+    subject: document.getElementById('in-subject').value.trim(),
+    level: document.getElementById('in-level').value.trim() || 'มัธยมศึกษาตอนปลาย',
+    term: document.getElementById('in-term').value.trim() || '1',
+    year: document.getElementById('in-year').value.trim() || '2569',
+  };
+  document.getElementById('btn-submit').textContent = 'ส่งคำตอบและดูผลคะแนน';
+  viewSetup.classList.add('hidden');
+  viewQuiz.classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+document.getElementById('btn-submit').addEventListener('click', () => {
+  const unanswered = state.answers.map((a,i)=>a===null?i+1:null).filter(x=>x!==null);
+  if(unanswered.length > 0){
+    document.getElementById('unanswered-note').textContent =
+      `กรุณาตอบให้ครบทุกข้อ (ยังไม่ได้ตอบข้อที่ ${unanswered.join(', ')})`;
+    document.querySelector(`.q-card:nth-child(${unanswered[0]})`)?.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  showResult();
+});
+
+function showResult(){
+  const questions = SUBJECTS[state.subjectKey].questions;
+  let score = 0;
+  state.answers.forEach((a,i)=>{ if(a === questions[i].answer) score++; });
+  state.score = score;
+
+  viewQuiz.classList.add('hidden');
+  viewResult.classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+
+  document.getElementById('score-num').textContent = `${score}/${questions.length}`;
+  document.getElementById('result-name-line').textContent = state.info.name;
+  document.getElementById('result-sub-line').textContent = state.info.subject;
+
+  const reviewList = document.getElementById('review-list');
+  reviewList.innerHTML = '';
+  questions.forEach((item, i) => {
+    const correct = state.answers[i] === item.answer;
+    const row = document.createElement('div');
+    row.className = 'review-item ' + (correct ? 'correct' : 'wrong');
+    row.innerHTML = `
+      <div class="idx">${i+1}</div>
+      <div class="detail">คำตอบที่เลือก: ${LETTERS[state.answers[i]]}. ${item.choices[state.answers[i]]}</div>
+      <div class="mark">${correct ? 'ถูกต้อง' : 'ข้อที่ถูกคือ ' + LETTERS[item.answer]}</div>
+    `;
+    reviewList.appendChild(row);
+  });
+
+  // ส่งผลสอบไปบันทึกที่ Google Sheet (ถ้าตั้งค่า GOOGLE_SCRIPT_URL ไว้แล้ว)
+  const syncNote = document.getElementById('sync-note');
+  if(GOOGLE_SCRIPT_URL){
+    sendResultToSheet({
+      name: state.info.name,
+      subject: state.info.subject,
+      subjectCode: SUBJECTS[state.subjectKey].code,
+      level: state.info.level,
+      term: state.info.term,
+      year: state.info.year,
+      score: score,
+      total: questions.length,
+      detail: questions.map((item,i)=> `ข้อ ${i+1}: ${LETTERS[state.answers[i]]}`).join(' | ')
+    });
+    if(syncNote) syncNote.textContent = 'ระบบได้บันทึกผลสอบนี้ไปยังฐานข้อมูลกลางเรียบร้อยแล้ว แม้ไม่ดาวน์โหลด PDF ครูก็สามารถตรวจสอบผลย้อนหลังได้';
+  } else {
+    if(syncNote) syncNote.textContent = '';
+  }
+}
+
+document.getElementById('btn-restart').addEventListener('click', () => {
+  state.subjectKey = null;
+  state.answers = [];
+  document.getElementById('in-name').value = '';
+  viewResult.classList.add('hidden');
+  viewSelect.classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+// ---------------------------------------------------------------
+// PDF GENERATION
+// ---------------------------------------------------------------
+document.getElementById('btn-download').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-download');
+  const originalText = btn.textContent;
+  btn.textContent = 'กำลังสร้างไฟล์ PDF...';
+  btn.disabled = true;
+
+  const questions = SUBJECTS[state.subjectKey].questions;
+  const { name, subject, level, term, year } = state.info;
+
+  document.getElementById('pdf-header').textContent =
+    `แบบทดสอบรายวิชา ${subject}   ระดับชั้น ${level}   ภาคเรียนที่ ${term}   ปีการศึกษา ${year}`;
+  document.getElementById('pdf-subheader').textContent = 'หลักฐานผลการทำแบบทดสอบ (ระบบแบบทดสอบออนไลน์)';
+
+  document.getElementById('pdf-name').textContent = name;
+  document.getElementById('pdf-subject').textContent = subject;
+  document.getElementById('pdf-score').textContent = state.score;
+  document.getElementById('pdf-full').textContent = questions.length;
+
+  const detailBody = document.getElementById('pdf-detail-body');
+  detailBody.innerHTML = '';
+  questions.forEach((item, i) => {
+    const correct = state.answers[i] === item.answer;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td>${LETTERS[state.answers[i]]}. ${item.choices[state.answers[i]]}</td>
+      <td style="color:${correct ? '#2E7D53' : '#B3432B'}; font-weight:700;">${correct ? 'ถูก' : 'ผิด'}</td>
+    `;
+    detailBody.appendChild(tr);
+  });
+
+  document.getElementById('pdf-sig-name').textContent = '( .................................................... )';
+
+  const now = new Date();
+  const thaiMonths = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  document.getElementById('pdf-gen-note').textContent =
+    `สร้างเอกสารเมื่อวันที่ ${now.getDate()} ${thaiMonths[now.getMonth()]} พ.ศ. ${now.getFullYear()+543} เวลา ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} น. — เอกสารนี้สร้างจากระบบแบบทดสอบออนไลน์เพื่อใช้เป็นหลักฐานประกอบการส่งงาน`;
+
+  try{
+    const templateEl = document.getElementById('pdf-template');
+    const canvas = await html2canvas(templateEl, { scale: 2, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'pt', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    if(imgHeight <= pageHeight){
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+    } else {
+      let remainingHeight = canvas.height;
+      let position = 0;
+      const pxPerPage = Math.floor((pageHeight * canvas.width) / imgWidth);
+      let first = true;
+      while(remainingHeight > 0){
+        const sliceHeight = Math.min(pxPerPage, remainingHeight);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeight;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0,0,pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(canvas, 0, position, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+        const sliceData = pageCanvas.toDataURL('image/png');
+        if(!first) pdf.addPage();
+        pdf.addImage(sliceData, 'PNG', 0, 0, imgWidth, (sliceHeight*imgWidth)/canvas.width);
+        position += sliceHeight;
+        remainingHeight -= sliceHeight;
+        first = false;
+      }
+    }
+
+    const safeName = name.replace(/[^\u0E00-\u0E7Fa-zA-Z0-9]+/g, '_');
+    const safeSubject = SUBJECTS[state.subjectKey].code;
+    pdf.save(`แบบทดสอบ_${safeSubject}_${safeName || 'ผู้เรียน'}.pdf`);
+  } catch(err){
+    alert('เกิดข้อผิดพลาดในการสร้างไฟล์ PDF กรุณาลองใหม่อีกครั้ง');
+    console.error(err);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
