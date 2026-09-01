@@ -301,11 +301,27 @@
   #pdf-template .gen-note{
     margin-top:40px; font-size:10.5px; color:#888; text-align:left;
   }
+
+  /* ---------- IN-APP BROWSER WARNING ---------- */
+  .webview-banner{
+    display:flex; gap:12px; align-items:flex-start;
+    background:#FBEAE4; border:1.5px solid #E8B7A6; border-radius:12px;
+    padding:14px 16px; margin-bottom:22px; font-size:13.5px; line-height:1.7; color:#7A2E19;
+  }
+  .webview-banner .icon{font-size:20px; flex-shrink:0; line-height:1.4;}
+  .webview-banner b{font-family:'Kanit',sans-serif;}
+  .webview-banner .steps{margin:6px 0 0; padding-left:18px;}
+  .webview-banner button{
+    margin-top:10px; font-family:'Kanit',sans-serif; font-size:12.5px; font-weight:600;
+    background:#fff; border:1.5px solid #E8B7A6; color:#7A2E19;
+    padding:7px 12px; border-radius:8px; cursor:pointer;
+  }
 </style>
 </head>
 <body>
 
 <div class="wrap">
+  <div id="webview-banner-slot"></div>
   <div class="brandline">
     <div class="seal">สกร</div>
   </div>
@@ -446,6 +462,50 @@
 // DATA — extracted from uploaded ข้อสอบ .docx files
 // ---------------------------------------------------------------
 const LETTERS = ['ก','ข','ค','ง'];
+
+// ---------------------------------------------------------------
+// IN-APP BROWSER DETECTION (LINE / Facebook / Instagram / TikTok ฯลฯ)
+// เบราว์เซอร์ในแอปเหล่านี้มักบล็อกการดาวน์โหลดไฟล์โดยตั้งใจ
+// ---------------------------------------------------------------
+function detectInAppBrowser(){
+  const ua = navigator.userAgent || '';
+  if (/Line\//i.test(ua)) return { name: 'LINE', android: 'แตะไอคอน ⋮ (จุดสามจุด) มุมขวาบน แล้วเลือก "เปิดใน Chrome / เบราว์เซอร์"', ios: 'แตะไอคอนรูปเบราว์เซอร์ (⊙) ที่แถบด้านล่างขวา เพื่อเปิดใน Safari' };
+  if (/FBAN|FBAV/i.test(ua)) return { name: 'Facebook', android: 'แตะไอคอน ⋮ มุมขวาบน แล้วเลือก "เปิดในเบราว์เซอร์"', ios: 'แตะไอคอน ••• มุมขวาล่าง แล้วเลือก "เปิดใน Safari"' };
+  if (/Instagram/i.test(ua)) return { name: 'Instagram', android: 'แตะไอคอน ⋮ มุมขวาบน แล้วเลือก "เปิดในเบราว์เซอร์"', ios: 'แตะไอคอน ••• มุมขวาบน แล้วเลือก "เปิดใน Safari"' };
+  if (/MicroMessenger/i.test(ua)) return { name: 'WeChat', android: 'แตะไอคอน ⋮ แล้วเลือก "เปิดในเบราว์เซอร์"', ios: 'แตะ ••• แล้วเลือก "เปิดใน Safari"' };
+  if (/TikTok|BytedanceWebview/i.test(ua)) return { name: 'TikTok', android: 'แตะไอคอน ⋮ มุมขวาบน แล้วเลือก "เปิดในเบราว์เซอร์"', ios: 'แตะไอคอน ••• แล้วเลือก "เปิดใน Safari"' };
+  return null;
+}
+
+(function renderWebviewBanner(){
+  const info = detectInAppBrowser();
+  if(!info) return;
+  const slot = document.getElementById('webview-banner-slot');
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const instruction = isIOS ? info.ios : info.android;
+  slot.innerHTML = `
+    <div class="webview-banner">
+      <div class="icon">⚠️</div>
+      <div>
+        <b>กำลังเปิดผ่านแอป ${info.name}</b><br>
+        แอปนี้อาจบล็อกการดาวน์โหลดไฟล์ PDF ทำให้เมื่อกดดาวน์โหลดแล้วขึ้นข้อความให้ใช้เบราว์เซอร์อื่น
+        <ol class="steps">
+          <li>${instruction}</li>
+          <li>ทำแบบทดสอบและดาวน์โหลด PDF อีกครั้งในเบราว์เซอร์ที่เปิดขึ้นมาใหม่</li>
+        </ol>
+        <button id="copy-link-btn">คัดลอกลิงก์หน้านี้</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('copy-link-btn').addEventListener('click', async () => {
+    try{
+      await navigator.clipboard.writeText(window.location.href);
+      document.getElementById('copy-link-btn').textContent = 'คัดลอกลิงก์แล้ว ✓';
+    }catch(e){
+      alert('คัดลอกลิงก์ไม่สำเร็จ กรุณาคัดลอกจากแถบที่อยู่ด้านบนแทน');
+    }
+  });
+})();
 
 // ---------------------------------------------------------------
 // GOOGLE SHEET SYNC (optional)
@@ -925,7 +985,9 @@ document.getElementById('btn-download').addEventListener('click', async () => {
 
     const safeName = name.replace(/[^\u0E00-\u0E7Fa-zA-Z0-9]+/g, '_');
     const safeSubject = SUBJECTS[state.subjectKey].code;
-    pdf.save(`แบบทดสอบ_${safeSubject}_${safeName || 'ผู้เรียน'}.pdf`);
+    const filename = `แบบทดสอบ_${safeSubject}_${safeName || 'ผู้เรียน'}.pdf`;
+
+    await deliverPdf(pdf, filename);
   } catch(err){
     alert('เกิดข้อผิดพลาดในการสร้างไฟล์ PDF กรุณาลองใหม่อีกครั้ง');
     console.error(err);
@@ -934,6 +996,46 @@ document.getElementById('btn-download').addEventListener('click', async () => {
     btn.disabled = false;
   }
 });
+
+// ---------------------------------------------------------------
+// SMART PDF DELIVERY
+// เบราว์เซอร์ในแอป (LINE/FB/IG ฯลฯ) มักบล็อกการดาวน์โหลดไฟล์แบบปกติ
+// จึงลองใช้ Web Share API ก่อน (เปิดเมนูแชร์/บันทึกของเครื่อง) แล้วค่อย fallback
+// ไปที่การดาวน์โหลดตรง และสุดท้ายคือเปิดไฟล์ในแท็บใหม่ให้กดบันทึกเอง
+// ---------------------------------------------------------------
+async function deliverPdf(pdf, filename){
+  const blob = pdf.output('blob');
+  const inApp = detectInAppBrowser();
+
+  // 1) ลอง Web Share API ก่อน โดยเฉพาะถ้าเป็นเบราว์เซอร์ในแอป (ได้ผลดีที่สุดในกรณีนี้)
+  try{
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: filename });
+      return;
+    }
+  }catch(shareErr){
+    if(shareErr && shareErr.name === 'AbortError') return; // ผู้ใช้กดยกเลิกการแชร์เอง ไม่ต้องทำต่อ
+    // ถ้าแชร์ไม่สำเร็จด้วยเหตุผลอื่น ให้ลองวิธีถัดไป
+  }
+
+  // 2) ถ้าไม่ใช่เบราว์เซอร์ในแอป ให้ลองดาวน์โหลดตรงตามปกติ
+  if(!inApp){
+    try{
+      pdf.save(filename);
+      return;
+    }catch(saveErr){
+      console.warn('pdf.save ไม่สำเร็จ กำลังลองเปิดไฟล์ในแท็บใหม่แทน', saveErr);
+    }
+  }
+
+  // 3) ทางเลือกสุดท้าย: เปิดไฟล์ในแท็บ/หน้าต่างใหม่ ให้ผู้ใช้กดบันทึก/แชร์ไฟล์เอง
+  const url = URL.createObjectURL(blob);
+  const opened = window.open(url, '_blank');
+  if(!opened){
+    alert('เบราว์เซอร์นี้บล็อกการเปิดไฟล์ใหม่ กรุณาเปิดหน้านี้ในเบราว์เซอร์ Chrome หรือ Safari แล้วลองดาวน์โหลดอีกครั้ง');
+  }
+}
 </script>
 </body>
 </html>
